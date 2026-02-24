@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Diabetes Prediction API</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #007BFF;
+    }
+    .form-group {
+      margin: 10px 0;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    input {
+      padding: 8px;
+      width: 100%;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 15px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🩺 Diabetes Prediction API</h1>
+    <p>Введите данные пациента для предсказания диабета.</p>
+
+    <form id="predict-form" style="display: none;">
+      <div class="form-group">
+        <label for="pregnancies">Pregnancies</label>
+        <input type="number" id="pregnancies" value="2" min="0" max="20" required />
+      </div>
+      <div class="form-group">
+        <label for="glucose">Glucose</label>
+        <input type="number" step="0.1" id="glucose" value="140" min="50" max="200" required />
+      </div>
+      <div class="form-group">
+        <label for="bmi">BMI</label>
+        <input type="number" step="0.1" id="bmi" value="35.5" min="15" max="50" required />
+      </div>
+      <div class="form-group">
+        <label for="age">Age</label>
+        <input type="number" id="age" value="32" min="18" max="90" required />
+      </div>
+      <button type="submit">Predict</button>
+    </form>
+
+    <pre id="response"></pre>
+  </div>
+
+  <script>
+    // Показываем форму входа при загрузке
+    window.onload = () => {
+      showLogin();
+    };
+
+    // Форма входа
+    function showLogin() {
+      const form = document.getElementById("predict-form");
+      form.style.display = "none";
+
+      const loginDiv = document.createElement("div");
+      loginDiv.id = "login-box";
+      loginDiv.innerHTML = `
+        <h3>🔐 Войдите для доступа к функционалу прогнозирования</h3>
+        <div class="form-group">
+          <label for="username">Имя пользователя</label>
+          <input type="text" id="username" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Пароль</label>
+          <input type="password" id="password" required />
+        </div>
+        <button onclick="authenticate()">Войти</button>
+      `;
+      document.querySelector(".container").prepend(loginDiv);
+    }
+
+    // Аутентификация: тестовый запрос с валидными данными
+    async function authenticate() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      if (!username || !password) {
+        alert("Введите имя пользователя и пароль");
+        return;
+      }
+
+      // Валидные тестовые данные (проходят Pydantic)
+      const testData = {
+        Pregnancies: 1,
+        Glucose: 100,
+        BMI: 25.0,
+        Age: 30
+      };
+
+      try {
+        const res = await fetch("/predict", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Basic " + btoa(username + ":" + password)
+          },
+          body: JSON.stringify(testData)
+        });
+
+        // Если 200 или 401 — сервер отвечает, значит соединение есть
+        if (res.status === 200 || res.status === 401) {
+          window.auth = { username, password };
+          document.getElementById("login-box").remove();
+          document.getElementById("predict-form").style.display = "block";
+          document.getElementById("response").textContent = "";
+          return;
+        }
+      } catch (err) {
+        document.getElementById("response").textContent = `Ошибка подключения: ${err.message}`;
+        return;
+      }
+
+      alert("Неизвестная ошибка при аутентификации");
+    }
+
+    // Обработка формы предсказания
+    document.getElementById("predict-form").onsubmit = async (e) => {
+      e.preventDefault();
+
+      if (!window.auth) {
+        showLogin();
+        return;
+      }
+
+      const data = {
+        Pregnancies: parseInt(document.getElementById("pregnancies").value),
+        Glucose: parseFloat(document.getElementById("glucose").value),
+        BMI: parseFloat(document.getElementById("bmi").value),
+        Age: parseInt(document.getElementById("age").value)
+      };
+
+      try {
+        const res = await fetch("/predict", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Basic " + btoa(window.auth.username + ":" + window.auth.password)
+          },
+          body: JSON.stringify(data)
+        });
+
+        const resultText = await res.text();
+        const resultArea = document.getElementById("response");
+        resultArea.textContent = res.ok
+          ? JSON.stringify(JSON.parse(resultText), null, 2)
+          : `Ошибка: ${res.status}\n${resultText}`;
+      } catch (err) {
+        document.getElementById("response").textContent = `Сетевая ошибка: ${err.message}`;
+      }
+    };
+  </script>
+</body>
+</html>

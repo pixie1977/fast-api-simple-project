@@ -1,0 +1,56 @@
+# Локальные файлы разработки
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.hypothesis/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Зависимости (если не нужно копировать локальные установки)
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Виртуальные окружения
+.env
+.venv
+venv
+env
+
+# Сборка Python
+build/
+dist/
+*.egg-info/
+
+# FastAPI / Uvicorn
+uvicorn.log
+
+# Артефакты тестов
+.pytest_cache/
+htmlcov/

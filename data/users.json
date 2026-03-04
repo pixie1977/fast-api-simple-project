@@ -1,0 +1,38 @@
+{
+  "admin": {
+    "username": "admin",
+    "email": "admin@diabetes.com",
+    "hashed_password": "$2b$12$QgpAZWV8Nu/MkieThzpPnepm9MjkQg4inajxJGacanpff2J1aK7Ya",
+    "role": "admin"
+  },
+  "user1": {
+    "username": "user1",
+    "email": "user1@diabetes.com",
+    "hashed_password": "$2b$12$FYdQS9cIRWVh8K7K30mjMOq7VIGLzVMd6hKM7ic0e0PBpOsxZummu",
+    "role": "user"
+  },
+  "user2": {
+    "username": "user2",
+    "email": "user2@diabetes.com",
+    "hashed_password": "$2b$12$FYdQS9cIRWVh8K7K30mjMOq7VIGLzVMd6hKM7ic0e0PBpOsxZummu",
+    "role": "user"
+  },
+  "user3": {
+    "username": "user3",
+    "email": "user3@diabetes.com",
+    "hashed_password": "$2b$12$FYdQS9cIRWVh8K7K30mjMOq7VIGLzVMd6hKM7ic0e0PBpOsxZummu",
+    "role": "user"
+  },
+  "1user": {
+    "username": "1user",
+    "email": "qqq@google.com",
+    "hashed_password": "$2b$12$SC1XQv3s8cCfhFkoewKfuuN9Q4QYCrV039oLXTlAWf111LGw2U2sq",
+    "role": "user"
+  },
+  "2user": {
+    "username": "2user",
+    "email": "2user@google.com",
+    "hashed_password": "$2b$12$s.SgVsjkZT6L7KGcw5dvf.xN6bukpC/pRROe.eAkPx7UIyOHJcI.e",
+    "role": "user"
+  }
+}

@@ -49,8 +49,8 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🩺 Diabetes Prediction API</h1>
+  <div class="container" >
+    <h1>🩺 Diabetes Prediction Form</h1>
     <p>Введите данные пациента для предсказания диабета.</p>
 
     <form id="predict-form" style="display: none;">
@@ -77,12 +77,7 @@
   </div>
 
   <script>
-    // Показываем форму входа при загрузке
-    window.onload = () => {
-      showLogin();
-    };
-
-    // Форма входа
+    // Показываем форму входа при загрузке или возврате на страницу
     function showLogin() {
       const form = document.getElementById("predict-form");
       form.style.display = "none";
@@ -90,7 +85,7 @@
       const loginDiv = document.createElement("div");
       loginDiv.id = "login-box";
       loginDiv.innerHTML = `
-        <h3>🔐 Войдите для доступа к функционалу прогнозирования</h3>
+        <h3>🔐 Войдите или зарегистрируйтесь</h3>
         <div class="form-group">
           <label for="username">Имя пользователя</label>
           <input type="text" id="username" required />
@@ -100,11 +95,106 @@
           <input type="password" id="password" required />
         </div>
         <button onclick="authenticate()">Войти</button>
+        <p>Нет аккаунта? <a href="#" onclick="showRegister(); return false;">Зарегистрироваться</a></p>
       `;
       document.querySelector(".container").prepend(loginDiv);
     }
 
-    // Аутентификация: тестовый запрос с валидными данными
+    // Показываем форму входа при загрузке
+    window.onload = () => {
+      showLogin();
+    };
+
+    // Форма регистрации
+    function showRegister() {
+      const form = document.getElementById("predict-form");
+      form.style.display = "none";
+
+      const container = document.querySelector(".container");
+      const loginBox = document.getElementById("login-box");
+      if (loginBox) loginBox.remove();
+
+      const registerDiv = document.createElement("div");
+      registerDiv.id = "register-box";
+      registerDiv.innerHTML = `
+        <h3>📝 Регистрация</h3>
+        <div class="form-group">
+          <label for="reg-username">Имя пользователя</label>
+          <input type="text" id="reg-username" required />
+        </div>
+        <div class="form-group">
+          <label for="reg-email">Email</label>
+          <input type="email" id="reg-email" required />
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Пароль</label>
+          <input type="password" id="reg-password" required />
+        </div>
+        <button onclick="registerUser()">Зарегистрироваться</button>
+        <p><a href="#" onclick="showLogin(); return false;">Вернуться ко входу</a></p>
+      `;
+      container.prepend(registerDiv);
+    }
+
+    // Отправка данных регистрации
+    async function registerUser() {
+      const username = document.getElementById("reg-username").value;
+      const email = document.getElementById("reg-email").value;
+      const password = document.getElementById("reg-password").value;
+
+      if (!username || !email || !password) {
+        alert("Заполните все поля");
+        return;
+      }
+
+      try {
+        const res = await fetch("/auth/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ username, email, password })
+        });
+
+        if (res.ok) {
+          alert("Регистрация успешна! Войдите под своим аккаунтом.");
+          // Удаляем форму регистрации перед показом формы входа
+          const registerBox = document.getElementById("register-box");
+          if (registerBox) registerBox.remove();
+          showLogin();
+        } else {
+          const error = await res.text();
+          document.getElementById("response").textContent = `Ошибка регистрации: ${res.status} ${error}`;
+        }
+      } catch (err) {
+        document.getElementById("response").textContent = `Ошибка подключения: ${err.message}`;
+      }
+    }
+
+    // Форма входа
+    function showLogin() {
+      const form = document.getElementById("predict-form");
+      form.style.display = "none";
+
+      const loginDiv = document.createElement("div");
+      loginDiv.id = "login-box";
+      loginDiv.innerHTML = `
+        <h3>🔐 Войдите или зарегистрируйтесь</h3>
+        <div class="form-group">
+          <label for="username">Имя пользователя</label>
+          <input type="text" id="username" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Пароль</label>
+          <input type="password" id="password" required />
+        </div>
+        <button onclick="authenticate()">Войти</button>
+        <p>Нет аккаунта? <a href="#" onclick="showRegister(); return false;">Зарегистрироваться</a></p>
+      `;
+      document.querySelector(".container").prepend(loginDiv);
+    }
+
+    // Аутентификация через /login
     async function authenticate() {
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
@@ -114,31 +204,34 @@
         return;
       }
 
-      // Валидные тестовые данные (проходят Pydantic)
-      const testData = {
-        Pregnancies: 1,
-        Glucose: 100,
-        BMI: 25.0,
-        Age: 30
-      };
-
       try {
-        const res = await fetch("/predict", {
+        const res = await fetch("/auth/login", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Basic " + btoa(username + ":" + password)
+            "Content-Type": "application/x-www-form-urlencoded"
           },
-          body: JSON.stringify(testData)
+          body: new URLSearchParams({
+            'username': username,
+            'password': password
+          })
         });
 
-        // Если 200 или 401 — сервер отвечает, значит соединение есть
-        if (res.status === 200 || res.status === 401) {
-          window.auth = { username, password };
+        if (res.ok) {
+          const data = await res.json();
+          window.auth = { 
+            username: username, 
+            token: data.access_token 
+          };
           document.getElementById("login-box").remove();
           document.getElementById("predict-form").style.display = "block";
           document.getElementById("response").textContent = "";
+          // Проверяем роль пользователя после успешного входа
+          checkUserRole();
+          // Добавляем кнопку выхода
+          addLogoutButton();
           return;
+        } else {
+          document.getElementById("response").textContent = `Ошибка авторизации: ${res.status}`;
         }
       } catch (err) {
         document.getElementById("response").textContent = `Ошибка подключения: ${err.message}`;
@@ -146,6 +239,106 @@
       }
 
       alert("Неизвестная ошибка при аутентификации");
+    }
+
+    // Добавление кнопки выхода
+    function addLogoutButton() {
+      // Проверяем, есть ли уже кнопка выхода
+      if (document.getElementById("logout-button")) return;
+      
+      const logoutDiv = document.createElement("div");
+      logoutDiv.id = "logout-button";
+      logoutDiv.style.marginTop = "20px";
+      logoutDiv.innerHTML = `
+        <button onclick="logoutUser()">Выйти</button>
+      `;
+      document.querySelector(".container").appendChild(logoutDiv);
+    }
+
+    // Выход из системы
+    async function logoutUser() {
+      try {
+        await fetch("/auth/logout", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + window.auth.token
+          }
+        });
+        
+        // Очищаем данные аутентификации
+        window.auth = null;
+        
+        // Удаляем все динамические элементы
+        const loginBox = document.getElementById("login-box");
+        if (loginBox) loginBox.remove();
+        
+        const adminSection = document.getElementById("admin-section");
+        if (adminSection) adminSection.remove();
+        
+        const logoutButton = document.getElementById("logout-button");
+        if (logoutButton) logoutButton.remove();
+        
+        // Скрываем форму предсказания
+        document.getElementById("predict-form").style.display = "none";
+        
+        // Показываем форму входа
+        showLogin();
+        
+      } catch (err) {
+        console.error("Ошибка при выходе:", err);
+        alert("Ошибка при выходе из системы");
+      }
+    }
+
+    // Загрузка метрик администратора
+    async function loadAdminMetrics() {
+      try {
+        const res = await fetch("/admin/metrics", {
+          headers: {
+            "Authorization": "Bearer " + window.auth.token
+          }
+        });
+        
+        const resultText = await res.text();
+        const resultArea = document.getElementById("admin-response");
+        resultArea.textContent = res.ok
+          ? JSON.stringify(JSON.parse(resultText), null, 2)
+          : `Ошибка: ${res.status}\n${resultText}`;
+      } catch (err) {
+        document.getElementById("admin-response").textContent = `Сетевая ошибка: ${err.message}`;
+      }
+    }
+
+    // Проверка роли пользователя и добавление админ-ссылок
+    async function checkUserRole() {
+      try {
+        const res = await fetch("/me", {
+          headers: {
+            "Authorization": "Bearer " + window.auth.token
+          }
+        });
+        
+        if (res.ok) {
+          const userData = await res.json();
+          window.auth.role = userData.role;
+          
+          if (userData.role === "admin") {
+            const adminSection = document.createElement("div");
+            adminSection.id = "admin-section";
+            adminSection.innerHTML = `
+              <hr>
+              <h3>Администрирование</h3>
+              <div class="form-group">
+                <button type="button" onclick="loadAdminMetrics()">Загрузить метрики администратора</button>
+              </div>
+              <pre id="admin-response"></pre>
+            `;
+            document.querySelector(".container").appendChild(adminSection);
+          }
+        }
+      } catch (err) {
+        console.error("Ошибка при проверке роли:", err);
+      }
     }
 
     // Обработка формы предсказания
@@ -169,7 +362,7 @@
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": "Basic " + btoa(window.auth.username + ":" + window.auth.password)
+            "Authorization": "Bearer " + window.auth.token
           },
           body: JSON.stringify(data)
         });

@@ -2,18 +2,13 @@
 FastAPI-приложение для предсказания диабета с JWT-аутентификацией и RBAC.
 """
 
-import json
 import logging
-import os
 from pathlib import Path
-from typing import Optional, Any, Coroutine
 
 import onnxruntime as rt
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from passlib.context import CryptContext
-from pydantic import BaseModel, Field
+from fastapi.security import OAuth2PasswordRequestForm
 from starlette.responses import HTMLResponse
 
 from src.config.config import (
@@ -39,14 +34,22 @@ logger = logging.getLogger("diabetes-api")
 
 app = FastAPI(title="Diabetes Prediction API", version="1.0")
 
-# Загрузка ONNX-модели
-try:
-    sess = rt.InferenceSession(str(MODEL_PATH))
-    input_name = sess.get_inputs()[0].name
-    logger.info("ONNX модель загружена успешно.")
-except Exception as e:
-    logger.error(f"Ошибка загрузки модели: {e}")
-    raise
+
+def get_model():
+    """
+    Зависимость для централизованной инициализации и получения модели ONNX.
+    
+    :return: Кортеж из сессии модели и имени входного тензора.
+    :raises RuntimeError: При ошибке загрузки модели.
+    """
+    try:
+        sess = rt.InferenceSession(str(MODEL_PATH))
+        input_name = sess.get_inputs()[0].name
+        logger.info("ONNX модель загружена успешно.")
+        return sess, input_name
+    except Exception as e:
+        logger.error(f"Ошибка загрузки модели: {e}")
+        raise RuntimeError(f"Failed to load model: {e}")
 
 
 @app.post("/auth/register", response_model=UserInDB, status_code=201)
@@ -58,6 +61,7 @@ async def register(user: UserCreate) -> UserInDB:
     :return: Созданный пользователь.
     :raises HTTPException: При конфликте имён.
     """
+    logger.info(f"Регистрация пользователя: {user.username}")
     if user.username in fake_users_db:
         raise HTTPException(status_code=409, detail="Username already registered")
     hashed = get_password_hash(user.password)
@@ -69,7 +73,7 @@ async def register(user: UserCreate) -> UserInDB:
     )
     fake_users_db[user.username] = new_user
     save_users(fake_users_db)
-    logger.info(f"User '{user.username}' registered.")
+    logger.info(f"Пользователь '{user.username}' успешно зарегистрирован.")
     return new_user
 
 
@@ -82,16 +86,17 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict[str, s
     :return: JWT-токен.
     :raises HTTPException: При неверных учётных данных.
     """
+    logger.info(f"Login attempt for user: {form_data.username}")
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
-        logger.warning(f"Failed login attempt for {form_data.username}")
+        logger.warning(f"Логинится пользователь {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"subject": user.username, "role": user.role})
-    logger.info(f"User '{user.username}' logged in.")
+    logger.info(f"Пользователь '{user.username}' усспешно вошел в систему.")
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -107,7 +112,7 @@ async def logout(current_user: UserInDB = Depends(get_current_active_user)) -> d
     :param current_user: Текущий аутентифицированный пользователь.
     :return: Сообщение об успешном выходе.
     """
-    logger.info(f"User '{current_user.username}' logged out.")
+    logger.info(f"Пользователь '{current_user.username}' выходит из системы.")
     return {"message": "Successfully logged out"}
 
 
@@ -130,6 +135,7 @@ async def read_users_me(current_user: UserInDB = Depends(get_current_active_user
 async def predict(
     data: PredictionRequest,
     current_user: UserInDB = Depends(require_role("user")),
+    model: tuple = Depends(get_model)
 ) -> dict:
     """
     Выполняет предсказание диабета на основе входных данных.
@@ -140,8 +146,9 @@ async def predict(
     :return: Результат предсказания.
     :raises HTTPException: При ошибках модели.
     """
-    logger.info(f"User {current_user.username} requests /predict: {data}")
+    logger.info(f"Пользователь {current_user.username} запросил /predict: {data}")
 
+    sess, input_name = model
     input_data = [[data.Pregnancies, data.Glucose, data.BMI, data.Age]]
     try:
         pred = sess.run(None, {input_name: input_data})[0][0]

@@ -17,11 +17,8 @@ from src.config.config import (
     SECRET_KEY,
     ALGORITHM,
     TOKEN_EXPIRE_DELTA,
-    MODEL_PATH,
-    STATIC_PATH,
 )
 from src.models import UserInDB
-
 
 # Путь к файлу с пользователями
 USERS_FILE = Path(__file__).parent.parent / "data" / "users.json"
